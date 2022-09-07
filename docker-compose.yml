@@ -1,0 +1,117 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres
+    container_name: postgres
+    user: postgres
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready', '-h', 'localhost', '-U', 'postgres' ]
+  parser:
+    build:
+      context: visa_slots_monitoring
+      dockerfile: Dockerfile-parser
+    volumes:
+      - ./visa_slots_monitoring/app:/app
+    command: sh -c "python3 parser.py"
+    restart: always
+    depends_on:
+      - selenium
+      - elasticsearch
+  selenium:
+    image: selenium/standalone-chrome:latest
+    ports:
+    - 4444:4444
+    shm_size: '1gb'
+    restart: always
+  elasticsearch:
+    container_name: es-container
+    image: elasticsearch:8.2.2
+    environment:
+      - xpack.security.enabled=false
+      - "discovery.type=single-node"
+    ports:
+      - 9200:9200
+  thailand_api:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+    volumes:
+    - ./flask_app:/app
+    ports:
+      - 5001:5001
+    command: sh -c "python3 apis/thailand_api.py"
+    depends_on:
+      - elasticsearch
+  poland_api:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+    volumes:
+    - ./flask_app:/app
+    ports:
+      - 5002:5002
+    command: sh -c "python3 apis/poland_api.py"
+    depends_on:
+      - elasticsearch
+  latvia_api:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+    volumes:
+    - ./flask_app:/app
+    ports:
+      - 5003:5003
+    command: sh -c "python3 apis/latvia_api.py"
+    depends_on:
+      - elasticsearch
+  lithuania_api:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+    volumes:
+    - ./flask_app:/app
+    ports:
+      - 5004:5004
+    command: sh -c "python3 apis/lithuania_api.py"
+    depends_on:
+      - elasticsearch
+  spain_api:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+    volumes:
+    - ./flask_app:/app
+    ports:
+      - 5005:5005
+    command: sh -c "python3 apis/spain_api.py"
+    depends_on:
+      - elasticsearch
+  main_api:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+    volumes:
+    - ./flask_app:/app
+    ports:
+      - 5000:5000
+    command: sh -c "python3 start.py"
+    depends_on:
+      - elasticsearch
+      - postgres
+  scrappers:
+    build:
+      context: .
+      dockerfile: Dockerfile-scrap
+    volumes:
+    - ./flask_app:/scrap
+    command: sh -c "python3 data_processing.py"
+    depends_on:
+      - selenium
+      - elasticsearch
